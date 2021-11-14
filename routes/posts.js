@@ -1,37 +1,76 @@
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
+const NodeCache = require("node-cache");
 const errorHandler = require("../middleware/errorHandler");
 const AppError = require("../errors/appError");
 const sort = require("../util/sort");
+const processRequestResponse = require("../util/processRequest");
+
+const cache = new NodeCache({ stdTTL: 300 });
 
 const axiosInstance = axios.create({
   baseURL: "https://api.hatchways.io/assessment/blog/posts",
 });
+let tagRequests = [];
 
 router.get(`/`, async (req, res, next) => {
   console.log(req.originalUrl);
-  const tag = req.query.tag;
+  const tagParams = req.query.tag;
   const sortBy = req.query.sortBy || "id";
   const direction = req.query.direction || "asc";
-  axiosInstance
-    .get(``, { params: { tag: tag, sortBy: sortBy, direction: direction } })
-    .then((response) => {
-      if (!response.data.posts.length) {
-        next(new AppError("No posts have requested tag", 400));
-      } else {
-        let posts = [...response.data.posts];
-        console.log(`${tag} - ${sortBy} - ${direction}`);
-        sort(posts, direction, sortBy);
-        // console.log(posts);
-        const resPosts = new Object();
-        resPosts.posts = posts;
-        res.send(resPosts);
-      }
-    })
-    .catch((error) => {
-      next(error);
-    });
+  const cacheKey = `${tagParams}${sortBy}${direction}`;
+  if (cache.has(cacheKey)) {
+    res.send(cache.get(cacheKey));
+  } else {
+    const tags = tagParams.split(",");
+    for (const tag of tags) {
+      tagRequests.push(axiosInstance.get(``, { params: { tag: tag, sortBy: sortBy, direction: direction } }));
+    }
+    await Promise.all(tagRequests)
+      .then((response) => {
+        if (!response.length) {
+          next(new AppError("No posts have requested tag(s)", 400));
+        } else {
+          const posts = processRequestResponse(response);
+          sort(posts, direction, sortBy);
+          res.send(posts);
+        }
+      })
+      .catch((error) => {
+        next(error);
+      });
+  }
+});
+
+router.get(`/`, async (req, res, next) => {
+  console.log(req.originalUrl);
+  const tagParams = req.query.tagParams;
+  const sortBy = req.query.sortBy || "id";
+  const direction = req.query.direction || "asc";
+  const cacheKey = `${tagParams}${sortBy}${direction}`;
+  if (cache.has(cacheKey)) {
+    res.send(cache.get(cacheKey));
+  } else {
+    await axiosInstance
+      .get(``, { params: { tagParams: tagParams, sortBy: sortBy, direction: direction } })
+      .then((response) => {
+        if (!response.data.posts.length) {
+          next(new AppError("No posts have requested tagParams", 400));
+        } else {
+          let posts = [...response.data.posts];
+          console.log(`${tagParams} - ${sortBy} - ${direction}`);
+          sort(posts, direction, sortBy);
+          const resPosts = new Object();
+          resPosts.posts = posts;
+          cache.set(cacheKey, resPosts);
+          res.send(resPosts);
+        }
+      })
+      .catch((error) => {
+        next(error);
+      });
+  }
 });
 
 router.all("*", (req, res, next) => {
