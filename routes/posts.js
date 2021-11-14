@@ -6,11 +6,12 @@ const errorHandler = require("../middleware/errorHandler");
 const AppError = require("../errors/appError");
 const sort = require("../util/sort");
 const processRequestResponse = require("../util/processRequest");
+const global = require("../util/global");
 
 const cache = new NodeCache({ stdTTL: 300 });
 
 const axiosInstance = axios.create({
-  baseURL: "https://api.hatchways.io/assessment/blog/posts",
+  baseURL: global.URL,
 });
 let tagRequests = [];
 
@@ -34,6 +35,7 @@ router.get(`/`, async (req, res, next) => {
         } else {
           const posts = processRequestResponse(response);
           sort(posts, direction, sortBy);
+          cache.set(cacheKey, posts);
           res.send(posts);
         }
       })

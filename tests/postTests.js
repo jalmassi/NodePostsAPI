@@ -1,5 +1,6 @@
 const mocha = require('mocha');
 const assert = require('chai').assert;
+const request = require("supertest")("https://airportgap.dev-tester.com/api");
 
 describe("Posts API app", () => {
   describe("tag is 'tech'", () => {
