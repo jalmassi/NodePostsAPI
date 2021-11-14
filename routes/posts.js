@@ -6,28 +6,23 @@ const errorHandler = require("../middleware/errorHandler");
 const AppError = require("../errors/appError");
 const sort = require("../util/sort");
 const processRequestResponse = require("../util/processRequest");
+const createTagRequestList = require("../util/createTagRequestList");
 const global = require("../util/global");
 
 const cache = new NodeCache({ stdTTL: 300 });
 
-const axiosInstance = axios.create({
-  baseURL: global.URL,
-});
 let tagRequests = [];
 
 router.get(`/`, async (req, res, next) => {
-  console.log(req.originalUrl);
   const tagParams = req.query.tag;
   const sortBy = req.query.sortBy || "id";
   const direction = req.query.direction || "asc";
   const cacheKey = `${tagParams}${sortBy}${direction}`;
+
   if (cache.has(cacheKey)) {
     res.send(cache.get(cacheKey));
   } else {
-    const tags = tagParams.split(",");
-    for (const tag of tags) {
-      tagRequests.push(axiosInstance.get(``, { params: { tag: tag, sortBy: sortBy, direction: direction } }));
-    }
+    await createTagRequestList(tagRequests, { tag: tagParams, sortBy: sortBy, direction: direction });
     await Promise.all(tagRequests)
       .then((response) => {
         if (!response.length) {
