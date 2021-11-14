@@ -40,36 +40,6 @@ router.get(`/`, async (req, res, next) => {
   }
 });
 
-router.get(`/`, async (req, res, next) => {
-  console.log(req.originalUrl);
-  const tagParams = req.query.tagParams;
-  const sortBy = req.query.sortBy || "id";
-  const direction = req.query.direction || "asc";
-  const cacheKey = `${tagParams}${sortBy}${direction}`;
-  if (cache.has(cacheKey)) {
-    res.send(cache.get(cacheKey));
-  } else {
-    await axiosInstance
-      .get(``, { params: { tagParams: tagParams, sortBy: sortBy, direction: direction } })
-      .then((response) => {
-        if (!response.data.posts.length) {
-          next(new AppError("No posts have requested tagParams", 400));
-        } else {
-          let posts = [...response.data.posts];
-          console.log(`${tagParams} - ${sortBy} - ${direction}`);
-          sort(posts, direction, sortBy);
-          const resPosts = new Object();
-          resPosts.posts = posts;
-          cache.set(cacheKey, resPosts);
-          res.send(resPosts);
-        }
-      })
-      .catch((error) => {
-        next(error);
-      });
-  }
-});
-
 router.all("*", (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
