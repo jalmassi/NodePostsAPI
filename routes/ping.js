@@ -4,7 +4,7 @@ const axios = require("axios");
 const errorHandler = require("../middleware/errorHandler");
 let AppError = require("../errors/appError");
 
-router.get("/", (req, res, next) => {
+router.get("/ping", (req, res, next) => {
   res.status(200).send({
     success: true,
   });

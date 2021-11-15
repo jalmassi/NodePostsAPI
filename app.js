@@ -29,3 +29,5 @@ app.get("*", (req, res, next) => {
 app.use(handleErrors);
 
 startServer(PORT);
+
+module.exports = app;

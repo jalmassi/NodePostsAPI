@@ -14,6 +14,7 @@ const cache = new NodeCache({ stdTTL: 300 });
 let tagRequests = [];
 
 router.get(`/`, async (req, res, next) => {
+  if (req.query.tag === undefined || req.query.tag === "") return next(new AppError("No tag parameter included", 400));
   const tagParams = req.query.tag;
   const sortBy = req.query.sortBy || "id";
   const direction = req.query.direction || "asc";
@@ -31,7 +32,7 @@ router.get(`/`, async (req, res, next) => {
           const posts = processRequestResponse(response);
           sort(posts, direction, sortBy);
           cache.set(cacheKey, posts);
-          res.send(posts);
+          res.send({ posts: posts });
         }
       })
       .catch((error) => {
